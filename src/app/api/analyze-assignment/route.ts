@@ -1,50 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
-import { PDFDocument } from 'pdf-lib';
+import { ImageAnnotatorClient } from '@google-cloud/vision';
 
 // Initialize Google AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
 
-async function extractTextFromPDFWithOCR(buffer: Buffer, googleApiKey: string) {
-  // Load PDF
-  const pdfDoc = await PDFDocument.load(buffer);
-  const numPages = pdfDoc.getPageCount();
-  let extractedText = '';
+async function extractTextFromImageWithOCR(buffer: Buffer): Promise<string> {
+  try {
+    console.log('Starting image OCR processing...');
 
-  for (let i = 0; i < numPages; i++) {
-    const page = pdfDoc.getPage(i);
-    // Render page to PNG (pdf-lib does not support rendering, so we need a workaround)
-    // For now, we can only extract images if present, but for true rendering, a native tool is needed.
-    // Instead, we can ask user to upload images or use a service like pdf-poppler if available.
-    // Here, we just show the structure for calling Google Vision API with a PNG buffer.
-    // You may need to use a different library for actual rendering.
-    // Example placeholder:
-    // const pngBuffer = await renderPageToPNG(page); // Not supported by pdf-lib
-    // Instead, skip to Vision API call if you have an image buffer.
-    // For demonstration, we'll just send the PDF buffer (not correct for real OCR).
+    // Initialize Google Cloud Vision client
+    const visionClient = new ImageAnnotatorClient({
+      apiKey: process.env.GOOGLE_VISION_API_KEY
+    });
 
-    // Call Google Vision API
-    const response = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: buffer.toString('base64') },
-              features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
-            },
-          ],
-        })
+    console.log('Processing image with Google Vision API...');
+    
+    // Use document text detection for better handwriting recognition
+    const [result] = await visionClient.documentTextDetection({
+      image: { content: buffer }
+    });
+
+    if (result.fullTextAnnotation?.text) {
+      const extractedText = result.fullTextAnnotation.text.trim();
+      console.log(`Successfully extracted ${extractedText.length} characters using document detection`);
+      return extractedText;
+    }
+
+    // Fallback to regular text detection
+    console.log('Trying regular text detection...');
+    const [fallbackResult] = await visionClient.textDetection({
+      image: { content: buffer }
+    });
+
+    const detections = fallbackResult.textAnnotations;
+    if (detections && detections.length > 0) {
+      const extractedText = detections[0].description?.trim() || '';
+      if (extractedText) {
+        console.log(`Successfully extracted ${extractedText.length} characters using regular detection`);
+        return extractedText;
       }
-    );
-    const result = await response.json();
-    const text = result.responses?.[0]?.fullTextAnnotation?.text || '';
-    extractedText += text + '\n';
+    }
+
+    throw new Error('No text could be detected in the image. Please ensure the image contains visible handwritten or printed text.');
+
+  } catch (error) {
+    console.error('Image OCR processing error:', error);
+    throw new Error(`Failed to process image for OCR: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return extractedText;
 }
 
 export async function POST(request: NextRequest) {
@@ -56,25 +59,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Check if it's an image file
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'Please upload an image file (PNG, JPEG, etc.)' }, { status: 400 });
+    }
+
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // OCR for handwritten PDF
+    // OCR for handwritten image
     let extractedText = '';
     try {
-      extractedText = await extractTextFromPDFWithOCR(buffer, process.env.GOOGLE_VISION_API_KEY || '');
+      extractedText = await extractTextFromImageWithOCR(buffer);
     } catch (error) {
       console.error('OCR error:', error);
       return NextResponse.json({ error: 'Failed to extract text using OCR' }, { status: 500 });
     }
 
     if (!extractedText.trim()) {
-      return NextResponse.json({ error: 'No text could be extracted from the PDF. Make sure the PDF contains readable text.' }, { status: 400 });
+      return NextResponse.json({ error: 'No text could be extracted from the image. Make sure the image contains readable handwritten or printed text.' }, { status: 400 });
     }
 
     // Analyze with Google AI
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `
 You are an expert teacher evaluating a student's handwritten assignment. I'll provide you with the extracted text from a PDF of a handwritten assignment.

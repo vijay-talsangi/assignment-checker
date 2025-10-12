@@ -43,15 +43,15 @@ export default function ChatInterface() {
       {
         id: '1',
         type: 'ai',
-        content: 'Hello! I\'m your AI assignment evaluator. Upload a PDF of a handwritten assignment and I\'ll analyze it for you, checking if all questions are properly answered and providing detailed feedback.',
+        content: 'Hello! I\'m your AI assignment evaluator. Upload an image (PNG, JPEG) of a handwritten assignment and I\'ll analyze it for you, checking if all questions are properly answered and providing detailed feedback.',
         timestamp: new Date(),
       }
     ]);
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    if (!file.type.includes('pdf')) {
-      alert('Please upload a PDF file');
+    if (!file.type.includes('image/')) {
+      alert('Please upload an image file (PNG, JPEG, etc.)');
       return;
     }
 
@@ -100,7 +100,7 @@ export default function ChatInterface() {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
-        content: 'Sorry, I encountered an error while analyzing the assignment. Please make sure you\'ve uploaded a clear PDF file and try again.',
+        content: 'Sorry, I encountered an error while analyzing the assignment. Please make sure you\'ve uploaded a clear image file and try again.',
         timestamp: new Date(),
       };
 
@@ -233,24 +233,24 @@ export default function ChatInterface() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept="image/*"
             onChange={handleFileInputChange}
             className="hidden"
           />
           
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Upload Assignment PDF
+            Upload Assignment Image
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Drag and drop your PDF here, or click to browse
+            Drag and drop your image here, or click to browse
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
             className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors"
           >
-            Choose PDF File
+            Choose Image File
           </button>
         </div>
       </div>
