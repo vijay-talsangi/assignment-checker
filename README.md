@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Assignment Evaluator
 
-## Getting Started
+A beautiful chat interface for analyzing handwritten student assignments using AI. Upload PDF files of handwritten assignments and get instant AI-powered analysis with detailed feedback.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- 🤖 **AI-Powered Analysis**: Uses Google's Gemini AI to analyze handwritten assignments
+- 📄 **PDF Processing**: Extracts text from PDF files automatically
+- 💬 **Chat Interface**: Clean, modern chat UI similar to ChatGPT/Claude
+- 📊 **Detailed Feedback**: 
+  - Overall score and completion percentage
+  - Question-by-question analysis
+  - Strengths and areas for improvement
+  - Detailed feedback for each question
+- 🎨 **Beautiful UI**: Modern gradient design with dark mode support
+- 📱 **Responsive**: Works on desktop and mobile devices
+- 🔒 **No Auth Required**: Simple upload and analyze workflow
+
+## Setup Instructions
+
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd aies
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Get Google AI API Key**
+   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+   - Copy the API key
+
+4. **Configure Environment Variables**
+   - Copy `.env.example` to `.env.local`
+   - Add your Google AI API key:
+     ```
+     GOOGLE_AI_API_KEY=your_actual_api_key_here
+     ```
+
+5. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Open the application**
+   - Navigate to [http://localhost:3000](http://localhost:3000)
+   - Upload a PDF of a handwritten assignment
+   - Get instant AI analysis!
+
+## How It Works
+
+1. **Upload**: Drag and drop or click to upload a PDF file
+2. **Extract**: The app extracts text from the PDF using pdf-parse
+3. **Analyze**: Google's Gemini AI analyzes the content and provides detailed feedback
+4. **Display**: Results are shown in a beautiful, easy-to-read format
+
+## Technology Stack
+
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **Styling**: Tailwind CSS v4
+- **Icons**: Lucide React
+- **AI**: Google Generative AI (Gemini)
+- **PDF Processing**: pdf-parse
+- **Deployment**: Vercel-ready
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/analyze-assignment/
+│   │   └── route.ts          # API endpoint for assignment analysis
+│   ├── globals.css           # Global styles
+│   ├── layout.tsx           # Root layout
+│   └── page.tsx             # Main page
+└── components/
+    ├── ChatInterface.tsx     # Main chat interface component
+    └── AssignmentAnalysis.tsx # Analysis results display component
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features in Detail
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Assignment Analysis
+- **Overall Score**: Percentage score based on completion and quality
+- **Question Status**: Each question marked as complete, partial, or missing
+- **Detailed Feedback**: Specific feedback for each question
+- **Strengths**: What the student did well
+- **Improvements**: Areas that need work
+- **General Feedback**: Overall assessment and recommendations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### User Experience
+- **Drag & Drop**: Easy file upload with visual feedback
+- **Real-time Updates**: Loading states and instant results
+- **Chat History**: Previous analyses remain visible
+- **Responsive Design**: Works on all screen sizes
+- **Dark Mode**: Automatic dark mode support
 
-## Learn More
+## Customization
 
-To learn more about Next.js, take a look at the following resources:
+You can easily customize the analysis prompts by editing the prompt in `/src/app/api/analyze-assignment/route.ts`. Modify the evaluation criteria, scoring system, or feedback format to match your specific needs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This app is ready to deploy on Vercel:
 
-## Deploy on Vercel
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add your `GOOGLE_AI_API_KEY` environment variable in Vercel
+4. Deploy!
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Limitations
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Currently supports PDF files only
+- Requires clear, readable handwritten text
+- Analysis quality depends on the clarity of the scanned document
+- Rate limited by Google AI API quotas
+
+## Future Enhancements
+
+- Support for image files (JPG, PNG)
+- OCR integration for better handwriting recognition
+- Multiple language support
+- Export analysis results
+- Teacher dashboard for managing multiple assignments
+- Student progress tracking
+
+## Contributing
+
+Feel free to contribute to this project by submitting issues or pull requests!
