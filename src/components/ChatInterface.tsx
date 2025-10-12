@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Send, FileText, CheckCircle, XCircle, Clock, Bot, User, Loader2 } from 'lucide-react';
 import AssignmentAnalysis from './AssignmentAnalysis';
 
@@ -31,17 +31,23 @@ interface QuestionAnalysis {
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'ai',
-      content: 'Hello! I\'m your AI assignment evaluator. Upload a PDF of a handwritten assignment and I\'ll analyze it for you, checking if all questions are properly answered and providing detailed feedback.',
-      timestamp: new Date(),
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+    setMessages([
+      {
+        id: '1',
+        type: 'ai',
+        content: 'Hello! I\'m your AI assignment evaluator. Upload a PDF of a handwritten assignment and I\'ll analyze it for you, checking if all questions are properly answered and providing detailed feedback.',
+        timestamp: new Date(),
+      }
+    ]);
+  }, []);
 
   const handleFileUpload = async (file: File) => {
     if (!file.type.includes('pdf')) {
@@ -175,9 +181,15 @@ export default function ChatInterface() {
                     {message.fileName}
                   </div>
                 )}
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+                {isClient && (
+                  <p className="text-xs opacity-70 mt-1">
+                    {message.timestamp.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    })}
+                  </p>
+                )}
               </div>
             </div>
           </div>

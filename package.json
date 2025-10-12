@@ -11,7 +11,8 @@
     "@google/generative-ai": "^0.24.1",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
-    "pdf-parse": "^2.2.16",
+    "pdf-lib": "^1.17.1",
+    "pdfreader": "^3.0.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0"
@@ -19,7 +20,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",

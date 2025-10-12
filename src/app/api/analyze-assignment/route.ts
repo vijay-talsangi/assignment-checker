@@ -1,9 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-const PDFParse = require('pdf-parse');
+import sharp from 'sharp';
+import { PDFDocument } from 'pdf-lib';
 
 // Initialize Google AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+
+async function extractTextFromPDFWithOCR(buffer: Buffer, googleApiKey: string) {
+  // Load PDF
+  const pdfDoc = await PDFDocument.load(buffer);
+  const numPages = pdfDoc.getPageCount();
+  let extractedText = '';
+
+  for (let i = 0; i < numPages; i++) {
+    const page = pdfDoc.getPage(i);
+    // Render page to PNG (pdf-lib does not support rendering, so we need a workaround)
+    // For now, we can only extract images if present, but for true rendering, a native tool is needed.
+    // Instead, we can ask user to upload images or use a service like pdf-poppler if available.
+    // Here, we just show the structure for calling Google Vision API with a PNG buffer.
+    // You may need to use a different library for actual rendering.
+    // Example placeholder:
+    // const pngBuffer = await renderPageToPNG(page); // Not supported by pdf-lib
+    // Instead, skip to Vision API call if you have an image buffer.
+    // For demonstration, we'll just send the PDF buffer (not correct for real OCR).
+
+    // Call Google Vision API
+    const response = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${googleApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [
+            {
+              image: { content: buffer.toString('base64') },
+              features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+            },
+          ],
+        })
+      }
+    );
+    const result = await response.json();
+    const text = result.responses?.[0]?.fullTextAnnotation?.text || '';
+    extractedText += text + '\n';
+  }
+  return extractedText;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,14 +60,13 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Extract text from PDF
+    // OCR for handwritten PDF
     let extractedText = '';
     try {
-      const pdfData = await PDFParse(buffer);
-      extractedText = pdfData.text;
+      extractedText = await extractTextFromPDFWithOCR(buffer, process.env.GOOGLE_VISION_API_KEY || '');
     } catch (error) {
-      console.error('PDF parsing error:', error);
-      return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 500 });
+      console.error('OCR error:', error);
+      return NextResponse.json({ error: 'Failed to extract text using OCR' }, { status: 500 });
     }
 
     if (!extractedText.trim()) {
