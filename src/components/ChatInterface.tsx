@@ -50,8 +50,8 @@ export default function ChatInterface() {
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    if (!file.type.includes('image/')) {
-      alert('Please upload an image file (PNG, JPEG, etc.)');
+    if (!file.type.includes('pdf') && !file.type.includes('image')) {
+      alert('Please upload a PDF or image file');
       return;
     }
 
@@ -233,24 +233,27 @@ export default function ChatInterface() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             onChange={handleFileInputChange}
             className="hidden"
           />
           
           <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Upload Assignment Image
+            Upload Assignment PDF or Image
           </h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Drag and drop your image here, or click to browse
+            Drag and drop or click to browse
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+            Supports PDF, PNG, JPG, JPEG
           </p>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
             className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors"
           >
-            Choose Image File
+            Choose File
           </button>
         </div>
       </div>

@@ -2,8 +2,80 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ImageAnnotatorClient } from '@google-cloud/vision';
 
+const CONVERT_API_KEY = 'kSbKTaETXx16MXmuDz480jy3SBf0ZQvk';
+
 // Initialize Google AI
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+
+async function convertPDFToImages(pdfBuffer: Buffer): Promise<string[]> {
+  console.log('Converting PDF to images using ConvertAPI...');
+  
+  const formData = new FormData();
+  const pdfBlob = new Blob([new Uint8Array(pdfBuffer)], { type: 'application/pdf' });
+  formData.append('File', pdfBlob, 'assignment.pdf');
+  formData.append('StoreFile', 'true');
+
+  const response = await fetch('https://v2.convertapi.com/convert/pdf/to/jpg', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${CONVERT_API_KEY}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ConvertAPI error: ${response.statusText} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log('ConvertAPI response:', result);
+
+  // Extract image URLs from the response
+  const imageUrls: string[] = [];
+  if (result.Files && Array.isArray(result.Files)) {
+    for (const file of result.Files) {
+      if (file.Url) {
+        imageUrls.push(file.Url);
+      }
+    }
+  }
+
+  if (imageUrls.length === 0) {
+    throw new Error('No images were generated from the PDF');
+  }
+
+  console.log(`Converted PDF to ${imageUrls.length} images`);
+  return imageUrls;
+}
+
+async function downloadImage(url: string): Promise<Buffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.statusText}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+async function extractTextFromImage(imageBuffer: Buffer): Promise<string> {
+  console.log('Extracting text from image using Google Vision API...');
+  
+  const visionClient = new ImageAnnotatorClient({
+    apiKey: process.env.GOOGLE_VISION_API_KEY
+  });
+
+  const [result] = await visionClient.textDetection({
+    image: { content: imageBuffer }
+  });
+
+  const detections = result.textAnnotations;
+  if (detections && detections.length > 0) {
+    return detections[0].description || '';
+  }
+
+  return '';
+}
 
 async function extractTextFromImageWithOCR(buffer: Buffer): Promise<string> {
   try {
@@ -59,26 +131,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Check if it's an image file
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'Please upload an image file (PNG, JPEG, etc.)' }, { status: 400 });
-    }
-
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // OCR for handwritten image
     let extractedText = '';
-    try {
-      extractedText = await extractTextFromImageWithOCR(buffer);
-    } catch (error) {
-      console.error('OCR error:', error);
-      return NextResponse.json({ error: 'Failed to extract text using OCR' }, { status: 500 });
+
+    // Check if it's a PDF file
+    if (file.type === 'application/pdf') {
+      console.log('Processing PDF file...');
+      
+      try {
+        // Convert PDF to images
+        const imageUrls = await convertPDFToImages(buffer);
+        console.log(`PDF converted to ${imageUrls.length} images`);
+
+        // Process each image with OCR
+        const pageTexts: string[] = [];
+        for (let i = 0; i < imageUrls.length; i++) {
+          console.log(`Processing page ${i + 1}/${imageUrls.length}...`);
+          
+          try {
+            const imageBuffer = await downloadImage(imageUrls[i]);
+            const pageText = await extractTextFromImage(imageBuffer);
+            
+            if (pageText.trim()) {
+              pageTexts.push(`--- Page ${i + 1} ---\n${pageText.trim()}\n`);
+            } else {
+              pageTexts.push(`--- Page ${i + 1} ---\n[No text detected on this page]\n`);
+            }
+          } catch (pageError) {
+            console.error(`Error processing page ${i + 1}:`, pageError);
+            pageTexts.push(`--- Page ${i + 1} ---\n[Error processing this page]\n`);
+          }
+        }
+
+        extractedText = pageTexts.join('\n');
+        
+      } catch (error) {
+        console.error('PDF processing error:', error);
+        return NextResponse.json({ error: 'Failed to process PDF file' }, { status: 500 });
+      }
+      
+    } else if (file.type.startsWith('image/')) {
+      console.log('Processing image file...');
+      
+      // Process single image with OCR
+      try {
+        extractedText = await extractTextFromImageWithOCR(buffer);
+      } catch (error) {
+        console.error('Image OCR error:', error);
+        return NextResponse.json({ error: 'Failed to extract text from image' }, { status: 500 });
+      }
+      
+    } else {
+      return NextResponse.json({ error: 'Please upload a PDF or image file (PNG, JPEG, etc.)' }, { status: 400 });
     }
 
     if (!extractedText.trim()) {
-      return NextResponse.json({ error: 'No text could be extracted from the image. Make sure the image contains readable handwritten or printed text.' }, { status: 400 });
+      return NextResponse.json({ error: 'No text could be extracted from the file. Make sure it contains readable handwritten or printed text.' }, { status: 400 });
     }
 
     // Analyze with Google AI
